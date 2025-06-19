@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stored Procedure Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .success { color: green; font-weight: bold; }
+        .failure { color: red; font-weight: bold; }
+        pre { white-space: pre-wrap; word-wrap: break-word; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h2>Stored Procedure Test Report</h2>
+    <table>
+        <tr>
+            <th>Stored Procedure</th>
+            <th>Test Name/Type</th>
+            <th>Status</th>
+            <th>Reason for Failure</th>
+        </tr>
+        <tr>
+            <td>GetInactiveCustomers</td>
+            <td>test_create_procedure</td>
+            <td class="failure">❌ Failed</td>
+            <td>001003 (42000): 01bd1c26-0000-215e-0010-be8b0005191e: SQL compilation error:
+syntax error line 5 at position 20 unexpected 'ON'.</td>
+            <td><pre></pre></td>
+        </tr>
+        <tr>
+            <td>GetInactiveCustomers</td>
+            <td>test_procedure_execution</td>
+            <td class="failure">❌ Failed</td>
+            <td>002140 (42601): 01bd1c26-0000-2159-0010-be8b000558be: SQL compilation error:
+Unknown function GETINACTIVECUSTOMERS</td>
+            <td><pre></pre></td>
+        </tr>
+        <tr>
+            <td>GetStoreRevenue</td>
+            <td>test_create_procedure</td>
+            <td class="failure">❌ Failed</td>
+            <td>001003 (42000): 01bd1c26-0000-215b-0010-be8b00056ac2: SQL compilation error:
+syntax error line 5 at position 20 unexpected 'ON'.</td>
+            <td><pre></pre></td>
+        </tr>
+        <tr>
+            <td>GetStoreRevenue</td>
+            <td>test_procedure_execution</td>
+            <td class="failure">❌ Failed</td>
+            <td>002140 (42601): 01bd1c26-0000-215d-0010-be8b00053952: SQL compilation error:
+Unknown function GETSTOREREVENUE</td>
+            <td><pre></pre></td>
+        </tr>
+    </table>
+</body>
+</html>
