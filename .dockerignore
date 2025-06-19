@@ -1,4 +1,4 @@
-__pycache__
+__pycache__/
 *.pyc
 *.pyo
 .git
@@ -7,10 +7,16 @@ node_modules
 *.log
 *.sqlite3
 config.py
+myenv
 .myenv
 .logs
-logs/** 
-converted_procedures/** 
-extracted_procedures/** 
-processed_procedures/** 
+logs/
+converted_procedures/
+extracted_procedures/
+processed_procedures/ 
 py_tests/** 
+Dockerfile
+.dockerignore
+.gitignore
+.env
+README.md
