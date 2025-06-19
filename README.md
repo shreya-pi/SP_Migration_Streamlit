@@ -2,45 +2,6 @@
 
 This application is a Streamlit-based tool designed to assist in the migration of SQL Server stored procedures to Snowflake. It provides a step-by-step workflow for users to upload configuration files, select and flag procedures for migration, convert procedures using SnowConvert, process converted scripts, and execute unit tests to verify correctness.
 
-## Main Features
-
-- **End-to-End Migration Workflow**  
-    Navigate a guided, stepwise process that takes you from initial setup to final validation. Each stage is clearly defined, ensuring a structured and stress-free migration experience.
-
-- **Secure, Configurable Database Connections**  
-    Effortlessly manage and upload your SQL Server and Snowflake connection details via a dedicated `config.py` file. Sensitive information is handled securely, and connections are validated before proceeding.
-
-- **Automated Procedure Discovery & Inventory**  
-    Instantly connect to your SQL Server instance to scan, fetch, and display all available stored procedures. Review, filter, and select procedures for migration with ease—no manual cataloging required.
-
-- **Granular Migration Control**  
-    Select and flag only the procedures you wish to migrate. This selective approach gives you full control over the migration scope, supporting phased or targeted migrations.
-
-- **Integrated SnowConvert Automation**  
-    Harness the power of SnowConvert tool directly within the app. Automatically convert SQL Server stored procedures to Snowflake-compatible scripts, minimizing manual intervention and reducing conversion errors.
-
-- **Customizable Script Post-Processing**  
-    Apply automated post-processing to converted scripts, including schema name replacement, formatting, and other adjustments. Tailor the output to meet your organization’s deployment standards.
-
-- **Built-in Unit Testing & Validation**  
-    Execute comprehensive unit tests on migrated procedures within Snowflake. Detailed logs and result reports help you quickly identify issues and verify correctness before production deployment.
-
-- **Intuitive, Interactive Streamlit UI**  
-    Enjoy a modern, user-friendly interface with sidebar navigation, real-time progress indicators, and contextual help. Each migration step is accompanied by clear instructions and feedback.
-
-- **Robust Session State Management**  
-    All workflow progress, user inputs, and logs are preserved throughout your session. Pause and resume migration activities without losing your place or data.
-
-- **Extensible & Modular Architecture**  
-    The application’s modular design makes it easy to add new migration steps, integrate custom logic, or plug in external scripts—future-proofing your migration process.
-
-- **Comprehensive Logging & Error Handling**  
-    Every action is logged in detail, with clear error messages and troubleshooting guidance. This transparency aids in debugging, auditing, and continuous improvement.
-
-- **Designed for Teams & Iterative Projects**  
-    Whether you’re migrating a handful of procedures or hundreds, the tool supports collaborative workflows and iterative migrations, making it ideal for teams and large-scale projects.
-
-
 
 ## Workflow
 
