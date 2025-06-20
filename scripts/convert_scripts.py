@@ -66,6 +66,8 @@ class SnowConvertRunner:
 
         try:
             if current_os == "darwin": self._install_cli_macos()
+            elif current_os == "linux":
+                self._install_cli_linux()
             elif current_os in ("windows", "win32"): self._install_cli_windows()
             else:
                 self._log(f"Automatic install only supports macOS and Windows. Detected OS: {current_os}", "ERROR")
@@ -81,6 +83,41 @@ class SnowConvertRunner:
         
         self._log("✅ SnowConvert CLI is ready.")
         return True
+
+    # --- NEW METHOD: _install_cli_linux ---
+    def _install_cli_linux(self):
+        """Downloads and installs the SnowConvert CLI for Linux (x64 or ARM64)."""
+        machine = platform.machine().lower()
+        if machine in ("x86_64", "amd64"):
+            arch, url = "x64", "https://sctoolsartifacts.z5.web.core.windows.net/linux/prod/cli/SnowConvert-CLI-linux.tar.gz"
+        elif machine in ("arm64", "aarch64"):
+            arch, url = "arm64", "https://sctoolsartifacts.z5.web.core.windows.net/linux_arm64/prod/cli/SnowConvert-CLI-arm64-linux.tar.gz"
+        else:
+            raise Exception(f"Unsupported Linux architecture: {machine}")
+        
+        extract_to = os.path.abspath("./SnowConvert-CLI-linux")
+        orchestrator_path = os.path.join(extract_to, "orchestrator")
+        
+        self._log(f"Downloading SnowConvert for Linux ({arch})...")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tar_path = os.path.join(tmpdir, "snowct.tar.gz")
+            with requests.get(url, stream=True, timeout=120) as r:
+                r.raise_for_status()
+                with open(tar_path, "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+            
+            self._log("Download complete. Extracting...")
+            with tarfile.open(tar_path, "r:gz") as tar:
+                tar.extractall(path=extract_to)
+
+        os.environ["PATH"] = orchestrator_path + os.pathsep + os.environ.get("PATH", "")
+        self._log(f"Added '{orchestrator_path}' to PATH.")
+        # Make sure the binary is executable
+        snowct_binary = os.path.join(orchestrator_path, "snowct")
+        if os.path.exists(snowct_binary):
+            os.chmod(snowct_binary, 0o755)
+            self._log(f"Set executable permission on {snowct_binary}")
+
 
     def _install_cli_macos(self):
         # (This method's internal logic is the same, but uses self._log)

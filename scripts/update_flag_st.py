@@ -6,10 +6,11 @@ import pandas as pd
 import os
 import sys
 import importlib
+from scripts.log import log_error, log_info
 
 # Simple fallback for logging
-def log_error(msg): print(f"ERROR: {msg}")
-def log_info(msg): print(f"INFO: {msg}")
+# def log_error(msg): print(f"ERROR: {msg}")
+# def log_info(msg): print(f"INFO: {msg}")
 
 METADATA_TABLE = "procedures_metadata"
 
@@ -173,41 +174,7 @@ class SelectProcedures:
                 with st.spinner(f"Extracting procedures to `{self.output_dir}`..."):
                     self.extract_procedures()
 
-        st.markdown("---")
 
-        # st.markdown("---")
-
-        # with st.container(border=True):
-        #     st.subheader("⚙️ Actions")
-        #     col1, col2 = st.columns(2)
-
-        #     with col1:
-        #         if st.button("📝 **Update Flags in Snowflake**", use_container_width=True, help="Saves your checkbox selections to the database."):
-        #             to_update = []
-        #             for full_name, orig_flag in proc_map.items():
-        #                 new_flag = st.session_state[f"chk_{full_name}"]
-        #                 if new_flag != orig_flag:
-        #                     db, schema, proc = full_name.split(".", 2); to_update.append((new_flag, db, schema, proc))
-                    
-        #             if not to_update:
-        #                 st.info("🔎 No changes detected. Nothing to update.")
-        #             else:
-        #                 with st.spinner("⏳ Saving changes to Snowflake..."):
-        #                     try:
-        #                         update_sql = f"UPDATE {METADATA_TABLE} SET CONVERSION_FLAG = %s WHERE DBNAME = %s AND SCHEMA_NAME = %s AND PROCEDURE_NAME = %s"
-        #                         st.session_state.sf_cursor.executemany(update_sql, to_update)
-        #                         st.session_state.sf_conn.commit()
-        #                         # Update in-memory state to match the new DB state
-        #                         for new_flag, db, schema, proc in to_update:
-        #                             st.session_state.proc_map[f"{db}.{schema}.{proc}"] = new_flag
-        #                         st.success(f"✅ **Flags Updated!** {len(to_update)} procedure(s) were changed. You can now proceed to extract them.")
-        #                     except Exception as e:
-        #                         st.error(f"❌ Error during update: {e}"); st.session_state.sf_conn.rollback()
-            
-        #     with col2:
-        #         if st.button("🚀 **Extract Flagged Procedures**", use_container_width=True, help="Finds all procedures with CONVERSION_FLAG = TRUE and saves their SQL code to local files."):
-        #             with st.spinner(f"Extracting procedures to `{self.output_dir}`..."):
-        #                 self.extract_procedures()
         
         st.markdown("---")
         
@@ -230,7 +197,24 @@ class SelectProcedures:
                 with st.spinner("Fetching latest metadata from Snowflake..."):
                     try:
                         df = pd.read_sql(f"SELECT * FROM {METADATA_TABLE} ORDER BY DBNAME, SCHEMA_NAME, PROCEDURE_NAME", st.session_state.sf_conn)
-                        st.dataframe(df, use_container_width=True)
+                        st.dataframe(
+                            df,
+                            use_container_width=True,
+                            column_config={
+                                "CONVERSION_FLAG": st.column_config.TextColumn(
+                                    "Conversion Flag",
+                                    help="Set to `True` to mark this procedure for migration."
+                                ),
+                                "IS_DEPLOYED": st.column_config.TextColumn(
+                                    "Is Deployed?",
+                                    help="Indicates if the converted procedure has been deployed in Snowflake."
+                                )
+                                # Add any other boolean columns here if needed
+                            },
+                            hide_index=True # Hides the pandas index for a cleaner look
+                        )
+
+                        # st.dataframe(df, use_container_width=True)
                     except Exception as e:
                         st.error(f"❌ Failed to fetch data: {e}")
 

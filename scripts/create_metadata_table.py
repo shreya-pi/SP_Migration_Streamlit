@@ -178,24 +178,48 @@ class CreateMetadataTable:
     
         
             for p in proc_list:
-                cs.execute(merge_sql, (
+            #     cs.execute(merge_sql, (
+            #         p["SOURCE"],
+            #         p["DBNAME"],
+            #         p["SCHEMA_NAME"],
+            #         p["PROCEDURE_NAME"],
+            #         p["PROCEDURE_DEFINITION"],
+            #         False,                      # CONVERSION_FLAG
+            #         sf_cfg['database'],         # SNOWFLAKE_DBNAME
+            #         sf_cfg['schema'],           # SNOWFLAKE_SCHEMA_NAME
+            #         "",                         # SNOWFLAKE_DDL placeholder
+            #         p["PARAMETERS"],
+            #         False,                       # IS_DEPLOYED
+            #         ""                          # ERRORS
+            #     ))
+
+                params_tuple = (
+                    # For USING clause (6 items)
                     p["SOURCE"],
                     p["DBNAME"],
                     p["SCHEMA_NAME"],
                     p["PROCEDURE_NAME"],
                     p["PROCEDURE_DEFINITION"],
+                    p["PARAMETERS"],
+                    # For WHEN NOT MATCHED -> INSERT clause (3 items)
                     False,                      # CONVERSION_FLAG
                     sf_cfg['database'],         # SNOWFLAKE_DBNAME
-                    sf_cfg['schema'],           # SNOWFLAKE_SCHEMA_NAME
-                    "",                         # SNOWFLAKE_DDL placeholder
-                    p["PARAMETERS"],
-                    False,                       # IS_DEPLOYED
-                    ""                          # ERRORS
-                ))
+                    sf_cfg['schema']            # SNOWFLAKE_SCHEMA_NAME
+                )
+                cs.execute(merge_sql, params_tuple)
     
-                inserted_count += cs.rowcount[0]
-                updated_count += cs.rowcount[1]
+
+                result_scan_query = 'SELECT "number of rows inserted", "number of rows updated" FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))'
+                cs.execute(result_scan_query)
+                
+                # Fetch the single row of results
+                result_row = cs.fetchone()
+                if result_row:
+                    rows_inserted, rows_updated = result_row
+                    inserted_count += rows_inserted
+                    updated_count += rows_updated
         
+
             ctx.commit()
             log_info(f"   → New procedures inserted: {inserted_count}")
             log_info(f"   → Existing procedures updated: {updated_count}")
