@@ -29,6 +29,9 @@ class CreateMetadataTable:
     
         conn_str = f"DRIVER={sql_server_config['driver']};SERVER={sql_server_config['server']};DATABASE={sql_server_config['database']};UID={sql_server_config['username']};PWD={sql_server_config['password']}"
         rows = []
+                # Initialize cnxn and cursor to None to handle connection errors
+        cnxn = None
+        cursor = None
         try:
             cnxn = pyodbc.connect(conn_str)
             cursor = cnxn.cursor()
@@ -83,9 +86,18 @@ class CreateMetadataTable:
                     "PROCEDURE_DEFINITION": r.procedure_definition,
                     "PARAMETERS":           ", ".join(params_by_proc.get(pname, [])),
                 })
+        except pyodbc.Error as ex:
+            # Catch potential database errors and report them
+            sqlstate = ex.args[0]
+            st.error(f"Database error in fetch_sqlserver_procedures: {sqlstate}")
+            st.error(ex)
+            st.stop() # Stop execution if we can't connect
+
         finally:
-            cursor.close()
-            cnxn.close()
+            if cursor:
+                cursor.close()
+            if cnxn:
+                cnxn.close()
         return rows
     
 
