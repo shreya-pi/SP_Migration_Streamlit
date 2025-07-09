@@ -24,35 +24,20 @@
             <th>Reason for Failure</th>
         </tr>
         <tr>
-            <td>GetInactiveCustomers</td>
+            <td>GetTopRentedMovies</td>
             <td>test_create_procedure</td>
             <td class="failure">❌ Failed</td>
-            <td>002003 (02000): 01bd26b1-0000-21ec-0010-be8b0005c22a: SQL compilation error:
-Schema 'TEST_DB.MIGRATION_SCHEMA' does not exist or not authorized.</td>
+            <td>001003 (42000): 01bd8cda-0000-24d6-0010-be8b000cc1b6: SQL compilation error:
+syntax error line 5 at position 8 unexpected 'SELECT'.
+syntax error line 6 at position 13 unexpected '.'.</td>
             <td><pre></pre></td>
         </tr>
         <tr>
-            <td>GetInactiveCustomers</td>
+            <td>GetTopRentedMovies</td>
             <td>test_procedure_execution</td>
             <td class="failure">❌ Failed</td>
-            <td>002140 (42601): 01bd26b1-0000-221b-0010-be8b00064226: SQL compilation error:
-Unknown function GETINACTIVECUSTOMERS</td>
-            <td><pre></pre></td>
-        </tr>
-        <tr>
-            <td>GetStoreRevenue</td>
-            <td>test_create_procedure</td>
-            <td class="failure">❌ Failed</td>
-            <td>002003 (02000): 01bd26b1-0000-21eb-0010-be8b0006326a: SQL compilation error:
-Schema 'TEST_DB.MIGRATION_SCHEMA' does not exist or not authorized.</td>
-            <td><pre></pre></td>
-        </tr>
-        <tr>
-            <td>GetStoreRevenue</td>
-            <td>test_procedure_execution</td>
-            <td class="failure">❌ Failed</td>
-            <td>002140 (42601): 01bd26b1-0000-2219-0010-be8b00062232: SQL compilation error:
-Unknown function GETSTOREREVENUE</td>
+            <td>002140 (42601): 01bd8cda-0000-24d9-0010-be8b000cd21a: SQL compilation error:
+Unknown function GETTOPRENTEDMOVIES</td>
             <td><pre></pre></td>
         </tr>
     </table>

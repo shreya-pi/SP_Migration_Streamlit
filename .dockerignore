@@ -14,6 +14,7 @@ logs/
 converted_procedures/
 extracted_procedures/
 processed_procedures/ 
+deployed_procedures/
 py_tests/
 scripts/__pycache__/
 Dockerfile
@@ -21,3 +22,5 @@ Dockerfile
 .gitignore
 .env
 README.md
+structure.txt
+structure.py

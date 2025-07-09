@@ -1,9 +1,13 @@
 scripts/__pycache__/
+__pycache__/
 myenv/
 logs/
 converted_procedures/
 extracted_procedures/
 processed_procedures/
+deployed_procedures/
 Dockerfile
 .env
 config.py
+structure.txt
+structure.py

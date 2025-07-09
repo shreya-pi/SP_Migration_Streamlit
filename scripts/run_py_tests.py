@@ -6,6 +6,7 @@ import os
 import unittest
 import importlib
 import io
+import shutil
 
 class UnitTestPage:
     def __init__(self, config: dict):
@@ -68,6 +69,89 @@ class UnitTestPage:
             else:
                 self.display_dashboard()
 
+        if st.session_state.test_results_df is not None and not st.session_state.test_results_df.empty:
+            st.markdown("---")
+            with st.container(border=True):
+                st.subheader("🚀 Publish Deployed Procedures to GitHub")
+                st.markdown(
+                    """
+                    This action will find all procedures that **passed the `test_procedure_execution` test**,
+                    copy them to a `deployed_procedures` folder, and push them to your configured Git repository.
+                    """
+                )
+                if st.button("🐙 **Publish to Git**", use_container_width=True, type="primary"):
+                    self.publish_to_git()
+
+
+    def publish_to_git(self):
+        """
+        Filters results, copies successful files, and calls the Git utility function.
+        """
+        try:
+            with st.spinner("Preparing files for publishing..."):
+                df = st.session_state.test_results_df
+                
+                # 1. Filter for successfully executed procedures
+                deployed_procs_df = df[
+                    (df['STATUS'] == '✅ Success') & 
+                    (df['TEST_CASE_NAME'] == 'test_procedure_execution')
+                ]
+
+                if deployed_procs_df.empty:
+                    st.warning("No successfully executed procedures found to publish.")
+                    st.stop()
+                
+                successful_proc_names = set(deployed_procs_df['PROCEDURE_NAME'])
+                
+                # 2. Prepare directories
+                source_dir = "./processed_procedures"
+                target_dir = "./deployed_procedures"
+                github_url = "https://github.com/shreya-pi/SP_Deployed_Procs_Test.git"
+                # if not os.path.exists(parent_target_dir):
+                #     os.makedirs(parent_target_dir)
+                # target_dir = "./deployed_procedures/deployed_procedures"
+                if os.path.exists(target_dir):
+                    shutil.rmtree(target_dir) # Start with a clean directory
+                os.makedirs(target_dir)
+
+               # 3. Copy the relevant files
+                # This logic assumes the filename in processed_procedures matches the PROCEDURE_NAME from the log.
+                # If not, you may need a more complex mapping based on the regex in py_test.py.
+                copied_files = 0
+                for proc_name in successful_proc_names:
+                    # Construct the expected source filename. Adjust if your naming is different.
+                    source_file = f"processed_{proc_name}.sql"
+                    target_file_name = f"deployed_{proc_name}.sql" 
+                    source_path = os.path.join(source_dir, source_file)
+                    
+                    if os.path.exists(source_path):
+                        target_path = os.path.join(target_dir, target_file_name)
+                        shutil.copy(source_path, target_path)
+                        copied_files += 1
+                    else:
+                        st.warning(f"Could not find source file for procedure '{proc_name}' at '{source_path}'. Skipping.")
+                
+                if copied_files == 0:
+                    st.error("Found successful procedures in log, but could not find any corresponding files in `processed_procedures`.")
+                    st.stop()
+
+                st.write(f"Found and copied {copied_files} deployed procedure files.")
+
+            # 4. Call the Git publishing function
+            with st.spinner("Connecting to Git and publishing files..."):
+                from scripts.git_publisher import GitPublisher
+                git_publisher = GitPublisher(target_dir, github_url)
+                git_publisher.git_publish()
+            
+            st.success(f"✅ Git Publish Completed!")
+
+        except Exception as e:
+            st.error("❌ An error occurred during the publish process:")
+            st.exception(e)
+
+
+
+
     def run_tests(self):
         """
         Handles the logic for executing the unittest suite.
@@ -104,9 +188,13 @@ class UnitTestPage:
                     runner.run(suite)
                 
                 st.success("✅ All test execution cycles complete. **Click 'View/Refresh Test Results'** to see the outcome.")
+                
                 st.session_state.test_results_df = None  # Force a refresh on next view
             except Exception as e:
                 st.error("❌ An error occurred during unit test execution:"); st.exception(e)
+
+
+
 
     def fetch_results(self):
         """
@@ -130,6 +218,9 @@ class UnitTestPage:
             except Exception as e:
                 st.error("❌ An error occurred while fetching results:"); st.exception(e)
                 st.session_state.test_results_df = None
+
+
+
 
     def display_dashboard(self):
         """

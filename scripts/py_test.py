@@ -7,6 +7,7 @@ import re
 from datetime import datetime, timezone
 # from config import SNOWFLAKE_CONFIG
 from scripts.log import log_info,log_error
+import sqlparse
 
 
 # Create the Snowflake table
@@ -80,6 +81,121 @@ def generate_html_report(results, output_file="py_tests/py_results.html"):
         file.write(html_content)
 
     log_info(f"Test report generated: {os.path.abspath(output_file)} for {proc_name}")
+
+
+
+
+
+    # print("Successfully executed all statements in the script.")
+
+    def run_single_test(sql_file_path, config):
+        """
+        Executes the full test suite from TestStoredProcedure for a SINGLE SQL file.
+        This function manages its own setup and teardown of the test environment.
+    
+        Args:
+            sql_file_path (str): The absolute or relative path to the single .sql file to test.
+            config (dict): The application configuration dictionary containing SNOWFLAKE_CONFIG.
+    
+        Returns:
+            tuple: A tuple containing (bool: success, str: test_output_log).
+        """
+        global CONFIG
+        CONFIG = config
+        
+        # Ensure the test class is in a clean state before starting
+        TestStoredProcedure.conn = None
+        TestStoredProcedure.cursor = None
+    
+        loader = unittest.TestLoader()
+        suite = loader.loadTestsFromTestCase(TestStoredProcedure)
+        
+        # Check if we actually loaded tests
+        if suite.countTestCases() == 0:
+            return False, "Failed to load any tests from TestStoredProcedure."
+    
+        # Inject the target SQL file into every test case instance in the suite
+        for test in suite:
+            test.sql_file = sql_file_path
+    
+        # Use an in-memory string buffer to capture the test runner's output
+        output_capture = io.StringIO()
+        runner = unittest.TextTestRunner(stream=output_capture, verbosity=2)
+        
+        # Manually manage setup and teardown to ensure connection handling
+        try:
+            TestStoredProcedure.setUpClass()
+            result = runner.run(suite)
+        finally:
+            # Crucially, always ensure the connection is closed
+            TestStoredProcedure.tearDownClass()
+    
+        # Get the captured output
+        test_output = output_capture.getvalue()
+        
+        # Check if the test run was successful
+        success = result.wasSuccessful()
+        
+        return success, test_output
+
+
+
+
+
+def run_single_test(sql_file_path, config):
+    """
+    Executes the full test suite from TestStoredProcedure for a SINGLE SQL file,
+    captures the structured results, and returns them.
+
+    Args:
+        sql_file_path (str): The absolute or relative path to the single .sql file to test.
+        config (dict): The application configuration dictionary containing SNOWFLAKE_CONFIG.
+
+    Returns:
+        list: A list of tuples, where each tuple contains the structured result
+              of a single test: (proc_name, test_type, status, reason, output)
+    """
+    global CONFIG, test_results
+    CONFIG = config
+    
+    # CRITICAL: Clear the global list to ensure a clean run for this file
+    test_results = []
+
+    # Ensure the test class is in a clean state before starting
+    TestStoredProcedure.conn = None
+    TestStoredProcedure.cursor = None
+
+    loader = unittest.TestLoader()
+    suite = loader.loadTestsFromTestCase(TestStoredProcedure)
+
+    if suite.countTestCases() == 0:
+        log_error("Failed to load any tests from TestStoredProcedure.")
+        # Return a failure message in the expected format
+        return [("Unknown", "Test Loading", "❌ Failed", "Could not load any tests.", "")]
+
+    # Inject the target SQL file into every test case instance in the suite
+    for test in suite:
+        test.sql_file = sql_file_path
+
+    # Use a dummy stream for the runner; our real results are collected in `run_test_with_capture`
+    runner = unittest.TextTestRunner(stream=io.StringIO(), verbosity=2)
+
+    try:
+        # Manually manage setup/teardown for robust connection handling
+        TestStoredProcedure.setUpClass()
+        runner.run(suite)
+    finally:
+        # Crucially, always ensure the connection is closed
+        TestStoredProcedure.tearDownClass()
+
+    # The global `test_results` list has been populated by the tests. Return it.
+    return test_results
+
+
+
+
+
+
 
 class TestStoredProcedure(unittest.TestCase):
     conn = None
@@ -159,17 +275,6 @@ class TestStoredProcedure(unittest.TestCase):
 
 
     def setUp(self):
-        """This method runs before EACH test method."""
-        # We can extract the proc_name here, as it depends on the sql_file
-        # which is set on the instance.
-        # self.assertIsNotNone(self.sql_file, "sql_file was not set on the test instance.")
-        # filename = os.path.basename(self.sql_file)  
-        # m = re.match(r'.*_(?P<proc>[^.]+)\.sql$', filename)
-        # if not m:
-        #     self.fail(f"Could not extract procedure name from filename: {filename}")
-        # self.proc_name = m.group('proc')
-        # self.PYUNIT_OUTPUT_TABLE = "TEST_RESULTS_LOG"
-        # self.METADATA_TABLE = "PROCEDURES_METADATA"
         
         """This method runs before EACH test method."""
         self.assertIsNotNone(self.sql_file, "sql_file was not set on the test instance.")
@@ -202,6 +307,7 @@ class TestStoredProcedure(unittest.TestCase):
         self.METADATA_TABLE = "PROCEDURES_METADATA"
 
 
+
     def run_test_with_capture(self, test_func, test_name="test_function"):
         global test_case_id_counter
 
@@ -217,7 +323,7 @@ class TestStoredProcedure(unittest.TestCase):
             """
             self.cursor.execute(check_sql, (test_name, self.proc_name))
             row = self.cursor.fetchone()
-            if row and row[0] == "✅ Success":
+            if row and row[0] == "✅ Success" and test_name != "test_create_procedure_from_file":
                 log_info(f"Skipping `{test_name}` for `{self.proc_name}` – already succeeded.")
                 return  # Do not re‐run a test that has previously passed
         except Exception as e:
@@ -321,7 +427,7 @@ class TestStoredProcedure(unittest.TestCase):
 
         
         # ── 5) If this test was a SUCCESS, mark the proc deployed in the metadata table
-        if status == "✅ Success":
+        if status == "✅ Success" and test_name == "test_procedure_execution":
             clean_proc_name = re.sub(r'\(.*\)$', '', self.proc_name)
             try:
                 update_sql = f"""
@@ -373,7 +479,5 @@ class TestStoredProcedure(unittest.TestCase):
 
         self.run_test_with_capture(test_logic, "test_procedure_execution")
 
-
-
-
+    
 

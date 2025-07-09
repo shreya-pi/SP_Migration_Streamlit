@@ -76,6 +76,7 @@ class SelectProcedures:
         # Initialize all necessary session state variables
         if "flow_started" not in st.session_state: st.session_state.flow_started = False
         if "show_metadata_table" not in st.session_state: st.session_state.show_metadata_table = False
+        if "search_terms" not in st.session_state: st.session_state.search_terms = {}
 
         # --- 1. INITIAL STATE: Display a welcome and start button ---
         if not st.session_state.flow_started:
@@ -104,6 +105,23 @@ class SelectProcedures:
                                 st.warning(f"⚠️ `{METADATA_TABLE}` is empty. Please run '1. Create Metadata Table' first."); st.stop()
                             
                             st.session_state.proc_map = {f"{db}.{sch}.{proc}": bool(flag) for db, sch, proc, flag in rows}
+
+
+                                                        # --- OPTIMIZATION: DO HEAVY WORK ONCE AND CACHE IT ---
+                            grouped = {}
+                            for full_name, _ in st.session_state.proc_map.items():
+                                db, schema, proc = full_name.split(".", 2)
+                                # Pre-process the data for faster searching later
+                                proc_data = {
+                                    'proc_name': proc,
+                                    'proc_lower': proc.lower(), # Pre-calculate lowercase
+                                    'full_name': full_name
+                                }
+                                grouped.setdefault((db, schema), []).append(proc_data)
+                            # Store the efficiently structured data in session state
+                            st.session_state.grouped_procs = grouped
+
+
                             st.session_state.flow_started = True
                             st.rerun()
                         except Exception as e:
@@ -117,18 +135,47 @@ class SelectProcedures:
         with st.container(border=True):
             st.subheader("🎯 Select Procedures for Conversion")
             st.caption("Check the box next to each procedure you want to convert. This sets its `CONVERSION_FLAG` to `TRUE` in the metadata table.")
-            
-            grouped = {}
-            for full_name, _ in proc_map.items():
-                db, schema, proc = full_name.split(".", 2)
-                grouped.setdefault((db, schema), []).append((proc, full_name))
-            
-            for (db, schema), items in sorted(grouped.items()):
-                with st.expander(f"**Database:** `{db}` → **Schema:** `{schema}`"):
-                    for proc, full_name in sorted(items):
-                        # Use the value from proc_map to ensure it reflects the latest db state
-                        st.checkbox(label=proc, key=f"chk_{full_name}", value=proc_map[full_name])
 
+            
+            # grouped = {}
+            # for full_name, _ in proc_map.items():
+            #     db, schema, proc = full_name.split(".", 2)
+            #     grouped.setdefault((db, schema), []).append((proc, full_name))
+            
+            
+            # for (db, schema), items in sorted(grouped.items()):
+            for (db, schema), items in sorted(st.session_state.grouped_procs.items()):
+                expander_key = f"{db}.{schema}"
+                with st.expander(f"**Database:** `{db}` → **Schema:** `{schema}` ({len(items)} procedures)"):
+                                       # --- NEW: In-expander search bar ---
+
+                    search_term = st.text_input(
+                        "🔎 Filter procedures in this schema",
+                        key=f"search_{expander_key}",
+                        placeholder="e.g., GET_CUSTOMER_DETAILS",
+                        on_change=lambda: None # This empty callback triggers a rerun on every keystroke
+                    ).lower()
+                    
+                                        # Perform a very fast search on the pre-calculated lowercase names
+                    filtered_items = [
+                        item for item in items 
+                        if search_term in item['proc_lower']
+                    ]
+
+                    # filtered_items = [(p, fn) for p, fn in items if search_term in p.lower()]
+                    if not filtered_items: st.info("No procedures match your filter.")
+                    else:
+                        # Create a scrollable container for the list of checkboxes
+                        with st.container(height=300):
+                            for item in sorted(filtered_items, key=lambda x: x['proc_name']):
+                                st.checkbox(
+                                    label=item['proc_name'], 
+                                    key=f"chk_{item['full_name']}", 
+                                    value=proc_map[item['full_name']]
+                                )
+
+                    
+                    
 
         # --- MODIFIED: A guided, step-by-step action container ---
         with st.container(border=True):
@@ -143,7 +190,7 @@ class SelectProcedures:
             st.markdown("#### Step 1: Save Your Changes")
             # st.caption("First, save any checkbox changes you made above. This action updates the `CONVERSION_FLAG` in the Snowflake database.")
             
-            if st.button("📝 **Update Flags in Snowflake**", use_container_width=True, help="Saves your checkbox selections to the database."):
+            if st.button("📝 **Update Conversion Flags**", use_container_width=True, help="Saves your checkbox selections to the database."):
                 to_update = []
                 for full_name, orig_flag in proc_map.items():
                     new_flag = st.session_state[f"chk_{full_name}"]
@@ -170,7 +217,7 @@ class SelectProcedures:
             st.markdown("#### Step 2: Extract Procedures")
             # st.caption("After saving, extract all procedures that are currently flagged for conversion. This creates the `.sql` files needed for the next component.")
 
-            if st.button("🚀 **Extract Flagged Procedures**", use_container_width=True, help="Finds all procedures with CONVERSION_FLAG = TRUE and saves their SQL code."):
+            if st.button("🚀 **Extract Selected Procedures**", use_container_width=True, help="Finds all procedures with CONVERSION_FLAG = TRUE and saves their SQL code."):
                 with st.spinner(f"Extracting procedures to `{self.output_dir}`..."):
                     self.extract_procedures()
 
@@ -183,7 +230,9 @@ class SelectProcedures:
             col3, col4 = st.columns(2)
             with col3:
                 if st.button("📋 **Show/Hide Full Metadata Table**", use_container_width=True, help=f"View the entire contents of the `{METADATA_TABLE}` table from Snowflake."):
-                    st.session_state.show_metadata_table = not st.session_state.get("show_metadata_table", False)
+                    # Toggle the visibility of the metadata table
+                    st.session_state.show_metadata_table = not st.session_state.get("show_metadata_table", False) 
+
             with col4:
                 if st.button("🔒 **Close Connection & Restart**", use_container_width=True, help="Disconnect from Snowflake and reset this component."):
                     try:
